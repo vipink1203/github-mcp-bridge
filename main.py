@@ -226,32 +226,46 @@ async def get_license_info(ctx: Context, id: str) -> License:
     return License(**license_data)
 
 # MCP resources for GitHub Enterprise
-@mcp.resource("github://users")
-async def get_github_users(ctx: Context) -> List[User]:
+# Note: For resources, we cannot use ctx parameter without URI params
+@mcp.resource("github://users/{dummy}")
+async def get_github_users(dummy: str) -> List[User]:
     """
     Get a list of all GitHub Enterprise users.
     
     Returns:
         A list of all users in the enterprise.
     """
-    client = ctx.app.github_client
-    response = await client.get("enterprise/users")
-    return [User(**user) for user in response]
+    # Access client from the global scope
+    token = os.environ.get("GITHUB_TOKEN")
+    enterprise_url = os.environ.get("GITHUB_ENTERPRISE_URL", "https://api.github.com")
+    client = GitHubClient(token=token, base_url=enterprise_url)
+    
+    try:
+        response = await client.get("enterprise/users")
+        return [User(**user) for user in response]
+    finally:
+        await client.close()
 
-@mcp.resource("github://organizations")
-async def get_github_organizations(ctx: Context) -> List[Organization]:
+@mcp.resource("github://organizations/{dummy}")
+async def get_github_organizations(dummy: str) -> List[Organization]:
     """
     Get a list of all GitHub Enterprise organizations.
     
     Returns:
         A list of all organizations in the enterprise.
     """
-    client = ctx.app.github_client
-    orgs_data = await client.get("organizations")
-    return [Organization(**org) for org in orgs_data]
+    token = os.environ.get("GITHUB_TOKEN")
+    enterprise_url = os.environ.get("GITHUB_ENTERPRISE_URL", "https://api.github.com")
+    client = GitHubClient(token=token, base_url=enterprise_url)
+    
+    try:
+        orgs_data = await client.get("organizations")
+        return [Organization(**org) for org in orgs_data]
+    finally:
+        await client.close()
 
 @mcp.resource("github://user/{username}")
-async def get_github_user(ctx: Context, username: str) -> User:
+async def get_github_user(username: str) -> User:
     """
     Get information about a specific GitHub user.
     
@@ -261,12 +275,18 @@ async def get_github_user(ctx: Context, username: str) -> User:
     Returns:
         Detailed user information.
     """
-    client = ctx.app.github_client
-    user_data = await client.get(f"users/{username}")
-    return User(**user_data)
+    token = os.environ.get("GITHUB_TOKEN")
+    enterprise_url = os.environ.get("GITHUB_ENTERPRISE_URL", "https://api.github.com")
+    client = GitHubClient(token=token, base_url=enterprise_url)
+    
+    try:
+        user_data = await client.get(f"users/{username}")
+        return User(**user_data)
+    finally:
+        await client.close()
 
 @mcp.resource("github://user/{username}/organizations")
-async def get_github_user_organizations(ctx: Context, username: str) -> List[Organization]:
+async def get_github_user_organizations(username: str) -> List[Organization]:
     """
     Get organizations for a specific GitHub user.
     
@@ -276,21 +296,33 @@ async def get_github_user_organizations(ctx: Context, username: str) -> List[Org
     Returns:
         A list of organizations the user belongs to.
     """
-    client = ctx.app.github_client
-    orgs_data = await client.get(f"users/{username}/orgs")
-    return [Organization(**org) for org in orgs_data]
+    token = os.environ.get("GITHUB_TOKEN")
+    enterprise_url = os.environ.get("GITHUB_ENTERPRISE_URL", "https://api.github.com")
+    client = GitHubClient(token=token, base_url=enterprise_url)
+    
+    try:
+        orgs_data = await client.get(f"users/{username}/orgs")
+        return [Organization(**org) for org in orgs_data]
+    finally:
+        await client.close()
 
-@mcp.resource("github://licenses")
-async def get_github_licenses(ctx: Context) -> List[License]:
+@mcp.resource("github://licenses/{dummy}")
+async def get_github_licenses(dummy: str) -> List[License]:
     """
     Get a list of all GitHub Enterprise licenses.
     
     Returns:
         A list of all licenses in the enterprise.
     """
-    client = ctx.app.github_client
-    licenses_data = await client.get("enterprise/licenses")
-    return [License(**license) for license in licenses_data]
+    token = os.environ.get("GITHUB_TOKEN")
+    enterprise_url = os.environ.get("GITHUB_ENTERPRISE_URL", "https://api.github.com")
+    client = GitHubClient(token=token, base_url=enterprise_url)
+    
+    try:
+        licenses_data = await client.get("enterprise/licenses")
+        return [License(**license) for license in licenses_data]
+    finally:
+        await client.close()
 
 # Main entry point
 if __name__ == "__main__":
