@@ -107,16 +107,15 @@ class ConsumedLicense(BaseModel):
     created_at: str
     updated_at: str
 
-# Context manager for the application
-class AppContext:
-    """Application context for the GitHub MCP server."""
-    def __init__(self, github_client: GitHubClient):
-        self.github_client = github_client
+# Global client instance for tools
+github_client = None
 
 # Lifespan context manager for the MCP server
 @asynccontextmanager
-async def app_lifespan(server: FastMCP) -> AsyncIterator[AppContext]:
-    """Manage application lifecycle with type-safe context."""
+async def app_lifespan(server: FastMCP) -> AsyncIterator[None]:
+    """Manage application lifecycle."""
+    global github_client
+    
     # Initialize resources on startup
     token = os.environ.get("GITHUB_TOKEN")
     if not token:
@@ -129,8 +128,7 @@ async def app_lifespan(server: FastMCP) -> AsyncIterator[AppContext]:
     
     try:
         # Set up the application context
-        app_context = AppContext(github_client=github_client)
-        yield app_context
+        yield None
     finally:
         # Clean up resources on shutdown
         await github_client.close()
@@ -150,8 +148,8 @@ async def list_enterprise_users(ctx: Context) -> List[User]:
     Returns:
         A list of users in the enterprise.
     """
-    client = ctx.app.github_client
-    response = await client.get("enterprise/users")
+    global github_client
+    response = await github_client.get("enterprise/users")
     return [User(**user) for user in response]
 
 @mcp.tool()
@@ -165,8 +163,8 @@ async def get_user_info(ctx: Context, username: str) -> User:
     Returns:
         Detailed user information.
     """
-    client = ctx.app.github_client
-    user_data = await client.get(f"users/{username}")
+    global github_client
+    user_data = await github_client.get(f"users/{username}")
     return User(**user_data)
 
 @mcp.tool()
@@ -180,8 +178,8 @@ async def list_user_organizations(ctx: Context, username: str) -> List[Organizat
     Returns:
         A list of organizations the user belongs to.
     """
-    client = ctx.app.github_client
-    orgs_data = await client.get(f"users/{username}/orgs")
+    global github_client
+    orgs_data = await github_client.get(f"users/{username}/orgs")
     return [Organization(**org) for org in orgs_data]
 
 @mcp.tool()
@@ -192,8 +190,8 @@ async def list_enterprise_organizations(ctx: Context) -> List[Organization]:
     Returns:
         A list of organizations in the enterprise.
     """
-    client = ctx.app.github_client
-    orgs_data = await client.get("organizations")
+    global github_client
+    orgs_data = await github_client.get("organizations")
     return [Organization(**org) for org in orgs_data]
 
 @mcp.tool()
@@ -207,9 +205,9 @@ async def get_user_emails(ctx: Context, username: str) -> List[Email]:
     Returns:
         A list of email addresses for the user.
     """
-    client = ctx.app.github_client
+    global github_client
     # This endpoint requires admin access for enterprise users
-    emails_data = await client.get(f"users/{username}/emails")
+    emails_data = await github_client.get(f"users/{username}/emails")
     return [Email(**email) for email in emails_data]
 
 @mcp.tool()
@@ -220,8 +218,8 @@ async def list_enterprise_licenses(ctx: Context) -> List[License]:
     Returns:
         A list of licenses in the enterprise.
     """
-    client = ctx.app.github_client
-    licenses_data = await client.get("enterprise/licenses")
+    global github_client
+    licenses_data = await github_client.get("enterprise/licenses")
     return [License(**license) for license in licenses_data]
 
 @mcp.tool()
@@ -235,8 +233,8 @@ async def get_license_info(ctx: Context, id: str) -> License:
     Returns:
         Detailed license information.
     """
-    client = ctx.app.github_client
-    license_data = await client.get(f"enterprise/licenses/{id}")
+    global github_client
+    license_data = await github_client.get(f"enterprise/licenses/{id}")
     return License(**license_data)
 
 @mcp.tool()
@@ -251,12 +249,12 @@ async def list_consumed_licenses(ctx: Context) -> List[ConsumedLicense]:
     Returns:
         A list of consumed licenses with detailed user information.
     """
-    client = ctx.app.github_client
+    global github_client
     
-    if not client.enterprise_name:
+    if not github_client.enterprise_name:
         raise ValueError("GITHUB_ENTERPRISE_NAME environment variable is required for this operation")
     
-    consumed_licenses_data = await client.get(f"enterprises/{client.enterprise_name}/consumed-licenses")
+    consumed_licenses_data = await github_client.get(f"enterprises/{github_client.enterprise_name}/consumed-licenses")
     return [ConsumedLicense(**license) for license in consumed_licenses_data.get("seats", [])]
 
 # MCP resources for GitHub Enterprise
