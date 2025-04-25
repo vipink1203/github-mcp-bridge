@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="800px" height="500px" viewBox="0 0 800 500" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="githubGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#5C6BC0;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#283593;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="mcpGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#7E57C2;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#4527A0;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="aiGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#26A69A;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#00796B;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="n8nGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#FF7043;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#E64A19;stop-opacity:1" />
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="3" dy="3" stdDeviation="5" flood-color="#000000" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="800" height="500" fill="#F5F5F5" rx="10" ry="10"/>
+  
+  <!-- Title -->
+  <text x="400" y="40" font-family="Arial, sans-serif" font-size="24" font-weight="bold" text-anchor="middle" fill="#212121">GitHub MCP Bridge Architecture</text>
+  
+  <!-- GitHub Enterprise -->
+  <rect x="50" y="100" width="200" height="100" rx="10" ry="10" fill="url(#githubGradient)" filter="url(#shadow)"/>
+  <text x="150" y="155" font-family="Arial, sans-serif" font-size="18" font-weight="bold" text-anchor="middle" fill="white">GitHub Enterprise</text>
+  
+  <!-- MCP Server -->
+  <rect x="300" y="200" width="200" height="100" rx="10" ry="10" fill="url(#mcpGradient)" filter="url(#shadow)"/>
+  <text x="400" y="255" font-family="Arial, sans-serif" font-size="18" font-weight="bold" text-anchor="middle" fill="white">GitHub MCP Bridge</text>
+  
+  <!-- AI Agents -->
+  <rect x="550" y="100" width="200" height="100" rx="10" ry="10" fill="url(#aiGradient)" filter="url(#shadow)"/>
+  <text x="650" y="155" font-family="Arial, sans-serif" font-size="18" font-weight="bold" text-anchor="middle" fill="white">AI Agents</text>
+  
+  <!-- n8n Workflows -->
+  <rect x="550" y="300" width="200" height="100" rx="10" ry="10" fill="url(#n8nGradient)" filter="url(#shadow)"/>
+  <text x="650" y="355" font-family="Arial, sans-serif" font-size="18" font-weight="bold" text-anchor="middle" fill="white">n8n Workflows</text>
+  
+  <!-- Connections -->
+  <path d="M 250 150 L 300 200" stroke="#424242" stroke-width="3" fill="none" marker-end="url(#arrowhead)"/>
+  <path d="M 500 250 L 550 150" stroke="#424242" stroke-width="3" fill="none" marker-end="url(#arrowhead)"/>
+  <path d="M 500 250 L 550 350" stroke="#424242" stroke-width="3" fill="none" marker-end="url(#arrowhead)"/>
+  
+  <!-- Legend -->
+  <rect x="50" y="350" width="200" height="100" rx="5" ry="5" fill="white" stroke="#BDBDBD" stroke-width="1"/>
+  <text x="150" y="375" font-family="Arial, sans-serif" font-size="16" font-weight="bold" text-anchor="middle" fill="#212121">Legend</text>
+  
+  <circle cx="70" y="395" r="5" fill="url(#githubGradient)"/>
+  <text x="85" y="400" font-family="Arial, sans-serif" font-size="14" fill="#424242">GitHub API</text>
+  
+  <circle cx="70" y="420" r="5" fill="url(#mcpGradient)"/>
+  <text x="85" y="425" font-family="Arial, sans-serif" font-size="14" fill="#424242">MCP Protocol</text>
+  
+  <circle cx="70" y="445" r="5" fill="url(#aiGradient)"/>
+  <text x="85" y="450" font-family="Arial, sans-serif" font-size="14" fill="#424242">AI Integration</text>
+  
+  <!-- Arrowhead marker definition -->
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#424242"/>
+    </marker>
+  </defs>
+</svg>
