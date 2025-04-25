@@ -4,7 +4,7 @@ import logging
 import asyncio
 import aiohttp
 from typing import Dict, List, Optional, Any, Union
-from mcp.server.fastmcp import FastMCP, Resource, Context
+from mcp.server.fastmcp import FastMCP, Context
 from pydantic import BaseModel, Field
 
 # Configure logging
