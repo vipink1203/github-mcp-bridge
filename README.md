@@ -17,7 +17,6 @@ A powerful Model Context Protocol (MCP) server that enables AI agents (like Clau
 - **Dual Transport Support**: Use stdio for direct integration or SSE for service deployment
 - **Kubernetes Ready**: Deploy in EKS, GKE, or any Kubernetes environment
 - **n8n Integration**: Create workflows with GitHub Enterprise data
-- **Docker Compose Support**: Easily integrate with existing containerized environments
 
 ## 📋 Prerequisites
 
@@ -73,32 +72,169 @@ export PORT=8050
 python main.py
 ```
 
-### Docker Support
+## 🐳 Running with Docker and n8n
 
-Build and run with Docker:
-```bash
-docker build -t github-mcp-bridge .
+The most common use case for this MCP server is to run it alongside n8n in a containerized environment.
 
-# Run with stdio transport
-docker run -i --rm -e GITHUB_TOKEN=your_token github-mcp-bridge
+### Option 1: Adding to Existing n8n Docker Compose Setup
 
-# Run with SSE transport
-docker run -i --rm -p 8050:8050 -e TRANSPORT=sse -e GITHUB_TOKEN=your_token github-mcp-bridge
+If you already have n8n running with Docker Compose, add these lines to your existing `docker-compose.yml` file:
+
+```yaml
+services:
+  # ... your existing n8n service and other services
+  
+  github-mcp:
+    image: ghcr.io/vipink1203/github-mcp-bridge:latest
+    # Or build from local source:
+    # build:
+    #   context: ./github-mcp-bridge
+    #   dockerfile: Dockerfile
+    container_name: github-mcp-bridge
+    environment:
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - GITHUB_ENTERPRISE_URL=${GITHUB_ENTERPRISE_URL:-https://api.github.com}
+      - TRANSPORT=sse
+      - PORT=8050
+      - HOST=0.0.0.0
+    ports:
+      - "8050:8050"
+    restart: unless-stopped
+    networks:
+      - n8n-network  # Use your existing n8n network
 ```
 
-### Docker Compose
+Make sure to add your GitHub token to your `.env` file:
+```
+GITHUB_TOKEN=your_github_token_here
+```
 
-We provide a `docker-compose.yml` file that can be used to run the server as a service:
+### Option 2: Using docker-compose.override.yml
 
+If you don't want to modify your original n8n docker-compose.yml:
+
+1. Create a `docker-compose.override.yml` in the same directory as your existing n8n `docker-compose.yml`:
+
+```yaml
+version: '3'
+
+services:
+  # Add MCP settings to n8n
+  n8n:
+    environment:
+      - N8N_COMMUNITY_PACKAGES=n8n-nodes-mcp
+      - N8N_COMMUNITY_PACKAGES_ALLOW_TOOL_USAGE=true
+      
+  # Add GitHub MCP service
+  github-mcp:
+    image: ghcr.io/vipink1203/github-mcp-bridge:latest
+    container_name: github-mcp-bridge
+    environment:
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - TRANSPORT=sse
+      - PORT=8050
+    ports:
+      - "8050:8050"
+    restart: unless-stopped
+    # This will use the same network as your n8n service
+```
+
+2. Update your `.env` file to include the GitHub token:
+```
+GITHUB_TOKEN=your_github_token_here
+```
+
+3. Run your Docker Compose as usual:
 ```bash
-# Create a .env file with your GitHub token
-echo "GITHUB_TOKEN=your_github_token" > .env
-
-# Start the service
 docker-compose up -d
 ```
 
-For integration with existing n8n Docker Compose setups, see the [Docker Compose Integration Guide](docs/docker-compose-integration.md).
+### Option 3: Starting from Scratch
+
+If you don't have n8n set up yet, here's a complete docker-compose.yml with both n8n and GitHub MCP:
+
+```yaml
+version: '3'
+
+services:
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: n8n
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_COMMUNITY_PACKAGES=n8n-nodes-mcp
+      - N8N_COMMUNITY_PACKAGES_ALLOW_TOOL_USAGE=true
+    volumes:
+      - ~/.n8n:/home/node/.n8n
+    networks:
+      - n8n-network
+
+  github-mcp:
+    image: ghcr.io/vipink1203/github-mcp-bridge:latest
+    container_name: github-mcp-bridge
+    environment:
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - GITHUB_ENTERPRISE_URL=${GITHUB_ENTERPRISE_URL:-https://api.github.com}
+      - TRANSPORT=sse
+      - PORT=8050
+      - HOST=0.0.0.0
+    ports:
+      - "8050:8050"
+    restart: unless-stopped
+    networks:
+      - n8n-network
+
+networks:
+  n8n-network:
+    driver: bridge
+```
+
+### Configuring n8n to Use the GitHub MCP
+
+1. Make sure the n8n-nodes-mcp package is enabled in your n8n environment:
+```yaml
+environment:
+  - N8N_COMMUNITY_PACKAGES=n8n-nodes-mcp
+  - N8N_COMMUNITY_PACKAGES_ALLOW_TOOL_USAGE=true
+```
+
+2. In the n8n web interface, add a new MCP credential:
+   - Go to **Settings** > **Credentials** > **New Credentials**
+   - Select **MCP Client API**
+   - Configure with:
+     - **Name**: GitHub MCP
+     - **Transport Type**: Server-Sent Events (SSE)
+     - **Server URL**: `http://github-mcp:8050/sse`
+     
+     Note: Use the container name (`github-mcp`) instead of localhost since they're in the same Docker network
+
+### Troubleshooting
+
+If you have issues connecting from n8n to the GitHub MCP service:
+
+1. **Network Connectivity**: Ensure both containers are on the same network:
+```bash
+docker network inspect n8n-network
+```
+
+2. **DNS Resolution**: Verify n8n can resolve the GitHub MCP service by name:
+```bash
+docker exec -it n8n ping github-mcp
+```
+
+3. **Check Logs**: Look for errors in the GitHub MCP container:
+```bash
+docker logs github-mcp-bridge
+```
+
+4. **Port Access**: Verify the service is listening on the correct port:
+```bash
+docker exec -it n8n curl http://github-mcp:8050/health
+```
+
+5. **Environment Variables**: Make sure all required variables are set correctly.
 
 ## 🛠️ MCP Tools & Resources
 
@@ -162,11 +298,40 @@ Add this configuration to your Claude Desktop settings:
 
 ### Kubernetes / EKS
 
-For detailed enterprise deployment instructions, see our [EKS Deployment Guide](docs/eks-deployment-guide.md).
+For more advanced EKS deployment options:
 
-### n8n Integration
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: github-mcp
+  namespace: n8n
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: github-mcp
+  template:
+    metadata:
+      labels:
+        app: github-mcp
+    spec:
+      containers:
+      - name: github-mcp
+        image: ghcr.io/vipink1203/github-mcp-bridge:latest
+        env:
+        - name: GITHUB_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: github-mcp-secrets
+              key: github-token
+        - name: TRANSPORT
+          value: "sse"
+        ports:
+        - containerPort: 8050
+```
 
-For integration with n8n workflows, refer to the [n8n Integration Guide](docs/n8n-integration-guide.md).
+For a complete EKS deployment guide, see the [wiki](https://github.com/vipink1203/github-mcp-bridge/wiki/EKS-Deployment-Guide).
 
 ## 📊 Example Use Cases
 
