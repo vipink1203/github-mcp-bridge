@@ -17,9 +17,10 @@ logger = logging.getLogger("github-mcp")
 
 # GitHub API client
 class GitHubClient:
-    def __init__(self, token: str, base_url: str = "https://api.github.com"):
+    def __init__(self, token: str, base_url: str = "https://api.github.com", enterprise_name: Optional[str] = None):
         self.token = token
         self.base_url = base_url
+        self.enterprise_name = enterprise_name or os.environ.get("GITHUB_ENTERPRISE_NAME")
         self.headers = {
             "Authorization": f"Bearer {token}",
             "Accept": "application/vnd.github+json",
@@ -94,6 +95,18 @@ class License(BaseModel):
     created_at: str
     updated_at: str
 
+class ConsumedLicense(BaseModel):
+    """GitHub consumed license model."""
+    user_login: str
+    user_id: int
+    user_type: str
+    user_name: Optional[str] = None
+    email: Optional[str] = None
+    saml_name_id: Optional[str] = None
+    github_com_enterprise_name: Optional[str] = None
+    created_at: str
+    updated_at: str
+
 # Context manager for the application
 class AppContext:
     """Application context for the GitHub MCP server."""
@@ -110,8 +123,9 @@ async def app_lifespan(server: FastMCP) -> AsyncIterator[AppContext]:
         raise ValueError("GITHUB_TOKEN environment variable is required")
 
     enterprise_url = os.environ.get("GITHUB_ENTERPRISE_URL", "https://api.github.com")
+    enterprise_name = os.environ.get("GITHUB_ENTERPRISE_NAME")
     
-    github_client = GitHubClient(token=token, base_url=enterprise_url)
+    github_client = GitHubClient(token=token, base_url=enterprise_url, enterprise_name=enterprise_name)
     
     try:
         # Set up the application context
@@ -225,6 +239,26 @@ async def get_license_info(ctx: Context, id: str) -> License:
     license_data = await client.get(f"enterprise/licenses/{id}")
     return License(**license_data)
 
+@mcp.tool()
+async def list_consumed_licenses(ctx: Context) -> List[ConsumedLicense]:
+    """
+    List all consumed licenses in the GitHub Enterprise instance.
+    
+    This tool retrieves detailed information about each license that has been 
+    consumed in your GitHub Enterprise, including user information, email, 
+    and SAML identities where available.
+    
+    Returns:
+        A list of consumed licenses with detailed user information.
+    """
+    client = ctx.app.github_client
+    
+    if not client.enterprise_name:
+        raise ValueError("GITHUB_ENTERPRISE_NAME environment variable is required for this operation")
+    
+    consumed_licenses_data = await client.get(f"enterprises/{client.enterprise_name}/consumed-licenses")
+    return [ConsumedLicense(**license) for license in consumed_licenses_data.get("seats", [])]
+
 # MCP resources for GitHub Enterprise
 # Note: For resources, we cannot use ctx parameter without URI params
 @mcp.resource("github://users/{dummy}")
@@ -321,6 +355,29 @@ async def get_github_licenses(dummy: str) -> List[License]:
     try:
         licenses_data = await client.get("enterprise/licenses")
         return [License(**license) for license in licenses_data]
+    finally:
+        await client.close()
+
+@mcp.resource("github://consumed-licenses/{dummy}")
+async def get_github_consumed_licenses(dummy: str) -> List[ConsumedLicense]:
+    """
+    Get a list of all consumed licenses in the GitHub Enterprise instance.
+    
+    Returns:
+        A list of consumed licenses with detailed user information.
+    """
+    token = os.environ.get("GITHUB_TOKEN")
+    enterprise_url = os.environ.get("GITHUB_ENTERPRISE_URL", "https://api.github.com")
+    enterprise_name = os.environ.get("GITHUB_ENTERPRISE_NAME")
+    
+    if not enterprise_name:
+        raise ValueError("GITHUB_ENTERPRISE_NAME environment variable is required for this operation")
+    
+    client = GitHubClient(token=token, base_url=enterprise_url, enterprise_name=enterprise_name)
+    
+    try:
+        consumed_licenses_data = await client.get(f"enterprises/{enterprise_name}/consumed-licenses")
+        return [ConsumedLicense(**license) for license in consumed_licenses_data.get("seats", [])]
     finally:
         await client.close()
 
