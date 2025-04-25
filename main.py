@@ -331,8 +331,23 @@ if __name__ == "__main__":
     
     # Configure server based on transport type
     if transport == "sse":
+        import uvicorn
+        from starlette.applications import Starlette
+        from starlette.routing import Mount
+        
+        # Create a Starlette application with the SSE server mounted at the root
+        app = Starlette(
+            routes=[
+                Mount("/", app=mcp.sse_app()),
+            ]
+        )
+        
+        # Start the ASGI server
         port = int(os.environ.get("PORT", 8050))
         host = os.environ.get("HOST", "0.0.0.0")
-        mcp.run(host=host, port=port)
+        
+        logger.info(f"Starting SSE server on {host}:{port}")
+        uvicorn.run(app, host=host, port=port)
     else:  # Default to stdio
+        logger.info("Starting server with stdio transport")
         mcp.run_stdio()
