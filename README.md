@@ -17,6 +17,7 @@ A powerful Model Context Protocol (MCP) server that enables AI agents (like Clau
 - **Dual Transport Support**: Use stdio for direct integration or SSE for service deployment
 - **Kubernetes Ready**: Deploy in EKS, GKE, or any Kubernetes environment
 - **n8n Integration**: Create workflows with GitHub Enterprise data
+- **Docker Compose Support**: Easily integrate with existing containerized environments
 
 ## 📋 Prerequisites
 
@@ -85,6 +86,20 @@ docker run -i --rm -e GITHUB_TOKEN=your_token github-mcp-bridge
 docker run -i --rm -p 8050:8050 -e TRANSPORT=sse -e GITHUB_TOKEN=your_token github-mcp-bridge
 ```
 
+### Docker Compose
+
+We provide a `docker-compose.yml` file that can be used to run the server as a service:
+
+```bash
+# Create a .env file with your GitHub token
+echo "GITHUB_TOKEN=your_github_token" > .env
+
+# Start the service
+docker-compose up -d
+```
+
+For integration with existing n8n Docker Compose setups, see the [Docker Compose Integration Guide](docs/docker-compose-integration.md).
+
 ## 🛠️ MCP Tools & Resources
 
 ### Available Tools
@@ -103,11 +118,11 @@ docker run -i --rm -p 8050:8050 -e TRANSPORT=sse -e GITHUB_TOKEN=your_token gith
 
 | Resource | Description |
 |----------|-------------|
-| `github://users` | List of all GitHub Enterprise users |
-| `github://organizations` | List of all GitHub Enterprise organizations |
+| `github://users/{dummy}` | List of all GitHub Enterprise users |
+| `github://organizations/{dummy}` | List of all GitHub Enterprise organizations |
 | `github://user/{username}` | Information about a specific user |
 | `github://user/{username}/organizations` | Organizations for a specific user |
-| `github://licenses` | List of all GitHub Enterprise licenses |
+| `github://licenses/{dummy}` | List of all GitHub Enterprise licenses |
 
 ## 🔌 Client Configuration
 
