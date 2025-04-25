@@ -1,0 +1,26 @@
+version: '3'
+
+services:
+  github-mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: github-mcp-bridge
+    environment:
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - GITHUB_ENTERPRISE_URL=${GITHUB_ENTERPRISE_URL:-https://api.github.com}
+      - TRANSPORT=sse
+      - PORT=8050
+      - HOST=0.0.0.0
+    ports:
+      - "8050:8050"
+    restart: unless-stopped
+    networks:
+      - mcp-network
+      - n8n-network  # This will connect to an existing n8n network if specified
+
+networks:
+  mcp-network:
+    driver: bridge
+  n8n-network:
+    external: true  # This indicates that the network is defined externally
