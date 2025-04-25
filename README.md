@@ -60,6 +60,7 @@ chmod +x setup.sh
 For stdio transport (direct integration with MCP clients):
 ```bash
 export GITHUB_TOKEN=your_github_token
+export GITHUB_ENTERPRISE_NAME=your_enterprise_name
 export TRANSPORT=stdio
 python main.py
 ```
@@ -67,6 +68,7 @@ python main.py
 For SSE transport (standalone service):
 ```bash
 export GITHUB_TOKEN=your_github_token
+export GITHUB_ENTERPRISE_NAME=your_enterprise_name
 export TRANSPORT=sse
 export PORT=8050
 python main.py
@@ -271,14 +273,21 @@ docker exec -it n8n curl http://github-mcp:8050/health
 
 ### Claude Desktop / Windsurf
 
-Add this configuration to your Claude Desktop settings:
+#### Setting up Claude Desktop Configuration
+
+The Claude Desktop settings file is located at:
+- On macOS: `~/Library/Application Support/Claude Desktop/settings.json`
+- On Windows: `%APPDATA%\Claude Desktop\settings.json` 
+- On Linux: `~/.config/Claude Desktop/settings.json`
+
+You can use any name for your MCP server (not just "github"). Here's an example using "github-ent" as the server name:
 
 ```json
 {
   "mcpServers": {
-    "github": {
+    "github-ent": {
       "command": "/path/to/your/venv/python",
-      "args": ["/path/to/main.py"],
+      "args": ["/path/to/github-mcp-bridge/main.py"],
       "env": {
         "GITHUB_TOKEN": "your_github_token",
         "GITHUB_ENTERPRISE_NAME": "your_enterprise_name",
@@ -289,17 +298,42 @@ Add this configuration to your Claude Desktop settings:
 }
 ```
 
+Make sure to replace:
+- `/path/to/your/venv/python` with the full path to the Python executable in your virtual environment
+- `/path/to/github-mcp-bridge/main.py` with the full path to the main.py file
+- `your_github_token` with your GitHub Personal Access Token
+- `your_enterprise_name` with your GitHub Enterprise name
+
+After editing the settings file, restart Claude Desktop for the changes to take effect.
+
+#### Testing the Integration
+
+You can test the integration by asking Claude:
+"Can you list the GitHub Enterprise users using the github-ent MCP tool?"
+
 ### SSE Configuration
+
+If you prefer to run the MCP server as a standalone service, you can configure Claude Desktop to use the SSE transport:
 
 ```json
 {
   "mcpServers": {
-    "github": {
+    "github-ent": {
       "transport": "sse",
       "url": "http://localhost:8050/sse"
     }
   }
 }
+```
+
+In this case, you'll need to start the server separately before using it with Claude Desktop:
+
+```bash
+export GITHUB_TOKEN=your_github_token
+export GITHUB_ENTERPRISE_NAME=your_enterprise_name
+export TRANSPORT=sse
+export PORT=8050
+python main.py
 ```
 
 ## 🌐 Enterprise Deployment
