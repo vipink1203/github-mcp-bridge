@@ -3,6 +3,8 @@ import os
 import logging
 import asyncio
 import aiohttp
+import ssl
+import certifi
 from typing import Dict, List, Optional, Any, Union, AsyncIterator
 from contextlib import asynccontextmanager
 from mcp.server.fastmcp import FastMCP, Context
@@ -27,10 +29,14 @@ class GitHubClient:
             "X-GitHub-Api-Version": "2022-11-28",
         }
         self.session = None
+        
+        # Setup SSL context with certifi for certificate verification
+        self.ssl_context = ssl.create_default_context(cafile=certifi.where())
 
     async def ensure_session(self):
         if self.session is None or self.session.closed:
-            self.session = aiohttp.ClientSession(headers=self.headers)
+            conn = aiohttp.TCPConnector(ssl=self.ssl_context)
+            self.session = aiohttp.ClientSession(headers=self.headers, connector=conn)
         return self.session
 
     async def get(self, endpoint: str, params: Optional[Dict] = None) -> Any:
@@ -257,6 +263,11 @@ async def list_consumed_licenses(ctx: Context) -> List[ConsumedLicense]:
     consumed_licenses_data = await github_client.get(f"enterprises/{github_client.enterprise_name}/consumed-licenses")
     return [ConsumedLicense(**license) for license in consumed_licenses_data.get("seats", [])]
 
+# Create a configured SSL context for resource functions 
+def get_ssl_connector():
+    ssl_context = ssl.create_default_context(cafile=certifi.where())
+    return aiohttp.TCPConnector(ssl=ssl_context)
+
 # MCP resources for GitHub Enterprise
 # Note: For resources, we cannot use ctx parameter without URI params
 @mcp.resource("github://users/{dummy}")
@@ -270,13 +281,28 @@ async def get_github_users(dummy: str) -> List[User]:
     # Access client from the global scope
     token = os.environ.get("GITHUB_TOKEN")
     enterprise_url = os.environ.get("GITHUB_ENTERPRISE_URL", "https://api.github.com")
-    client = GitHubClient(token=token, base_url=enterprise_url)
+    
+    # Create a client with SSL configured
+    conn = get_ssl_connector()
+    session = aiohttp.ClientSession(
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+        },
+        connector=conn
+    )
     
     try:
-        response = await client.get("enterprise/users")
-        return [User(**user) for user in response]
+        async with session.get(f"{enterprise_url}/enterprise/users") as response:
+            if response.status == 200:
+                data = await response.json()
+                return [User(**user) for user in data]
+            else:
+                text = await response.text()
+                raise Exception(f"GitHub API error: {response.status} - {text}")
     finally:
-        await client.close()
+        await session.close()
 
 @mcp.resource("github://organizations/{dummy}")
 async def get_github_organizations(dummy: str) -> List[Organization]:
@@ -288,13 +314,28 @@ async def get_github_organizations(dummy: str) -> List[Organization]:
     """
     token = os.environ.get("GITHUB_TOKEN")
     enterprise_url = os.environ.get("GITHUB_ENTERPRISE_URL", "https://api.github.com")
-    client = GitHubClient(token=token, base_url=enterprise_url)
+    
+    # Create a client with SSL configured
+    conn = get_ssl_connector()
+    session = aiohttp.ClientSession(
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+        },
+        connector=conn
+    )
     
     try:
-        orgs_data = await client.get("organizations")
-        return [Organization(**org) for org in orgs_data]
+        async with session.get(f"{enterprise_url}/organizations") as response:
+            if response.status == 200:
+                data = await response.json()
+                return [Organization(**org) for org in data]
+            else:
+                text = await response.text()
+                raise Exception(f"GitHub API error: {response.status} - {text}")
     finally:
-        await client.close()
+        await session.close()
 
 @mcp.resource("github://user/{username}")
 async def get_github_user(username: str) -> User:
@@ -309,13 +350,28 @@ async def get_github_user(username: str) -> User:
     """
     token = os.environ.get("GITHUB_TOKEN")
     enterprise_url = os.environ.get("GITHUB_ENTERPRISE_URL", "https://api.github.com")
-    client = GitHubClient(token=token, base_url=enterprise_url)
+    
+    # Create a client with SSL configured
+    conn = get_ssl_connector()
+    session = aiohttp.ClientSession(
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+        },
+        connector=conn
+    )
     
     try:
-        user_data = await client.get(f"users/{username}")
-        return User(**user_data)
+        async with session.get(f"{enterprise_url}/users/{username}") as response:
+            if response.status == 200:
+                data = await response.json()
+                return User(**data)
+            else:
+                text = await response.text()
+                raise Exception(f"GitHub API error: {response.status} - {text}")
     finally:
-        await client.close()
+        await session.close()
 
 @mcp.resource("github://user/{username}/organizations")
 async def get_github_user_organizations(username: str) -> List[Organization]:
@@ -330,13 +386,28 @@ async def get_github_user_organizations(username: str) -> List[Organization]:
     """
     token = os.environ.get("GITHUB_TOKEN")
     enterprise_url = os.environ.get("GITHUB_ENTERPRISE_URL", "https://api.github.com")
-    client = GitHubClient(token=token, base_url=enterprise_url)
+    
+    # Create a client with SSL configured
+    conn = get_ssl_connector()
+    session = aiohttp.ClientSession(
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+        },
+        connector=conn
+    )
     
     try:
-        orgs_data = await client.get(f"users/{username}/orgs")
-        return [Organization(**org) for org in orgs_data]
+        async with session.get(f"{enterprise_url}/users/{username}/orgs") as response:
+            if response.status == 200:
+                data = await response.json()
+                return [Organization(**org) for org in data]
+            else:
+                text = await response.text()
+                raise Exception(f"GitHub API error: {response.status} - {text}")
     finally:
-        await client.close()
+        await session.close()
 
 @mcp.resource("github://licenses/{dummy}")
 async def get_github_licenses(dummy: str) -> List[License]:
@@ -348,13 +419,28 @@ async def get_github_licenses(dummy: str) -> List[License]:
     """
     token = os.environ.get("GITHUB_TOKEN")
     enterprise_url = os.environ.get("GITHUB_ENTERPRISE_URL", "https://api.github.com")
-    client = GitHubClient(token=token, base_url=enterprise_url)
+    
+    # Create a client with SSL configured
+    conn = get_ssl_connector()
+    session = aiohttp.ClientSession(
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+        },
+        connector=conn
+    )
     
     try:
-        licenses_data = await client.get("enterprise/licenses")
-        return [License(**license) for license in licenses_data]
+        async with session.get(f"{enterprise_url}/enterprise/licenses") as response:
+            if response.status == 200:
+                data = await response.json()
+                return [License(**license) for license in data]
+            else:
+                text = await response.text()
+                raise Exception(f"GitHub API error: {response.status} - {text}")
     finally:
-        await client.close()
+        await session.close()
 
 @mcp.resource("github://consumed-licenses/{dummy}")
 async def get_github_consumed_licenses(dummy: str) -> List[ConsumedLicense]:
@@ -371,13 +457,27 @@ async def get_github_consumed_licenses(dummy: str) -> List[ConsumedLicense]:
     if not enterprise_name:
         raise ValueError("GITHUB_ENTERPRISE_NAME environment variable is required for this operation")
     
-    client = GitHubClient(token=token, base_url=enterprise_url, enterprise_name=enterprise_name)
+    # Create a client with SSL configured
+    conn = get_ssl_connector()
+    session = aiohttp.ClientSession(
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+        },
+        connector=conn
+    )
     
     try:
-        consumed_licenses_data = await client.get(f"enterprises/{enterprise_name}/consumed-licenses")
-        return [ConsumedLicense(**license) for license in consumed_licenses_data.get("seats", [])]
+        async with session.get(f"{enterprise_url}/enterprises/{enterprise_name}/consumed-licenses") as response:
+            if response.status == 200:
+                data = await response.json()
+                return [ConsumedLicense(**license) for license in data.get("seats", [])]
+            else:
+                text = await response.text()
+                raise Exception(f"GitHub API error: {response.status} - {text}")
     finally:
-        await client.close()
+        await session.close()
 
 # Define an async main function
 async def main():
@@ -409,4 +509,11 @@ async def main():
 
 # Main entry point
 if __name__ == "__main__":
+    # Make sure certifi is available
+    try:
+        certifi_path = certifi.where()
+        logger.info(f"Using SSL certificates from: {certifi_path}")
+    except ImportError:
+        logger.warning("certifi package not found. SSL verification may fail.")
+        
     asyncio.run(main())
