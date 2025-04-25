@@ -3,7 +3,8 @@ import os
 import logging
 import asyncio
 import aiohttp
-from typing import Dict, List, Optional, Any, Union
+from typing import Dict, List, Optional, Any, Union, AsyncIterator
+from contextlib import asynccontextmanager
 from mcp.server.fastmcp import FastMCP, Context
 from pydantic import BaseModel, Field
 
@@ -13,9 +14,6 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger("github-mcp")
-
-# Initialize the MCP server
-mcp = FastMCP("GitHub Enterprise MCP")
 
 # GitHub API client
 class GitHubClient:
@@ -102,10 +100,11 @@ class AppContext:
     def __init__(self, github_client: GitHubClient):
         self.github_client = github_client
 
-# Initialize the GitHub client with token from environment variables
-@mcp.startup
-async def startup():
-    """Initialize resources on startup."""
+# Lifespan context manager for the MCP server
+@asynccontextmanager
+async def app_lifespan(server: FastMCP) -> AsyncIterator[AppContext]:
+    """Manage application lifecycle with type-safe context."""
+    # Initialize resources on startup
     token = os.environ.get("GITHUB_TOKEN")
     if not token:
         raise ValueError("GITHUB_TOKEN environment variable is required")
@@ -114,13 +113,19 @@ async def startup():
     
     github_client = GitHubClient(token=token, base_url=enterprise_url)
     
-    # Set up the application context
-    return AppContext(github_client=github_client)
+    try:
+        # Set up the application context
+        app_context = AppContext(github_client=github_client)
+        yield app_context
+    finally:
+        # Clean up resources on shutdown
+        await github_client.close()
 
-@mcp.shutdown
-async def shutdown(context: AppContext):
-    """Clean up resources on shutdown."""
-    await context.github_client.close()
+# Initialize the MCP server with lifespan support
+mcp = FastMCP(
+    "GitHub Enterprise MCP",
+    lifespan=app_lifespan
+)
 
 # MCP tools for GitHub Enterprise users
 @mcp.tool()
