@@ -381,8 +381,8 @@ async def get_github_consumed_licenses(dummy: str) -> List[ConsumedLicense]:
     finally:
         await client.close()
 
-# Main entry point
-if __name__ == "__main__":
+# Define an async main function
+async def main():
     # Get the transport type from environment variables (default to stdio)
     transport = os.environ.get("TRANSPORT", "stdio").lower()
     
@@ -407,4 +407,8 @@ if __name__ == "__main__":
         uvicorn.run(app, host=host, port=port)
     else:  # Default to stdio
         logger.info("Starting server with stdio transport")
-        mcp.run_stdio()
+        await mcp.run_stdio_async()
+
+# Main entry point
+if __name__ == "__main__":
+    asyncio.run(main())
