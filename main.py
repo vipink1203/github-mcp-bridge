@@ -5,7 +5,8 @@ import asyncio
 import aiohttp
 import ssl
 import certifi
-from typing import Dict, List, Optional, Any, AsyncIterator
+import re
+from typing import Dict, List, Optional, Any, AsyncIterator, Tuple
 from contextlib import asynccontextmanager
 from mcp.server.fastmcp import FastMCP, Context
 from pydantic import BaseModel
@@ -33,12 +34,13 @@ class GitHubClient:
         self.ssl_context = ssl.create_default_context(cafile=certifi.where())
 
     async def ensure_session(self):
+        """Ensure we have an active session."""
         if self.session is None or self.session.closed:
             conn = aiohttp.TCPConnector(ssl=self.ssl_context)
             self.session = aiohttp.ClientSession(headers=self.headers, connector=conn)
         return self.session
 
-    async def get(self, endpoint: str) -> Dict:
+    async def get(self, endpoint: str, params: Optional[Dict] = None) -> Dict:
         """Make a GET request to the GitHub Enterprise API."""
         session = await self.ensure_session()
         url = f"{self.enterprise_base_url}{endpoint}"
@@ -46,7 +48,7 @@ class GitHubClient:
         logger.info(f"Making API request to: {url}")
         
         try:
-            async with session.get(url) as response:
+            async with session.get(url, params=params) as response:
                 if response.status == 200:
                     return await response.json()
                 else:
@@ -56,6 +58,67 @@ class GitHubClient:
         except Exception as e:
             logger.error(f"Error in GitHub API request: {str(e)}")
             raise
+
+    async def get_all_paginated_results(self, endpoint: str, per_page: int = 100) -> Dict:
+        """Get all results from a paginated API endpoint."""
+        session = await self.ensure_session()
+        url = f"{self.enterprise_base_url}{endpoint}"
+        all_results = {}
+        page = 1
+        
+        # Start with default structure for the consumed licenses endpoint
+        all_results = {
+            "total_seats_purchased": 0,
+            "total_seats_consumed": 0,
+            "seats": []
+        }
+        
+        while True:
+            params = {"per_page": per_page, "page": page}
+            logger.info(f"Fetching page {page} from: {url}")
+            
+            try:
+                async with session.get(url, params=params) as response:
+                    if response.status == 200:
+                        current_page_data = await response.json()
+                        
+                        # For first page, get the summary information
+                        if page == 1:
+                            all_results["total_seats_purchased"] = current_page_data.get("total_seats_purchased", 0)
+                            all_results["total_seats_consumed"] = current_page_data.get("total_seats_consumed", 0)
+                        
+                        # Add the users/seats from this page
+                        if "seats" in current_page_data:
+                            all_results["seats"].extend(current_page_data["seats"])
+                        
+                        # Check if we're done paginating
+                        link_header = response.headers.get("Link", "")
+                        if not link_header or 'rel="next"' not in link_header:
+                            break
+                        
+                        # Move to next page
+                        page += 1
+                    else:
+                        text = await response.text()
+                        logger.error(f"GitHub API error: {response.status} - {text}")
+                        raise Exception(f"GitHub API error: {response.status} - {text}")
+            except Exception as e:
+                logger.error(f"Error in paginated API request: {str(e)}")
+                raise
+        
+        logger.info(f"Retrieved {len(all_results.get('seats', []))} total entries from {page} pages")
+        return all_results
+
+    async def get_consumed_licenses(self, full: bool = True) -> Dict:
+        """Get consumed licenses information from the GitHub Enterprise API.
+        
+        Args:
+            full: If True, retrieves all pages of results. If False, retrieves only the first page.
+        """
+        if full:
+            return await self.get_all_paginated_results("/consumed-licenses")
+        else:
+            return await self.get("/consumed-licenses")
 
     async def close(self):
         """Close the aiohttp session."""
@@ -121,7 +184,7 @@ mcp = FastMCP(
 )
 
 @mcp.tool()
-async def list_consumed_licenses(ctx: Context, include_users: bool = False) -> ConsumedLicensesResponse:
+async def list_consumed_licenses(ctx: Context, include_users: bool = False, full_pagination: bool = True) -> ConsumedLicensesResponse:
     """
     Get information about consumed licenses in the GitHub Enterprise instance.
     
@@ -131,6 +194,7 @@ async def list_consumed_licenses(ctx: Context, include_users: bool = False) -> C
     
     Args:
         include_users: Whether to include detailed user information (default: False)
+        full_pagination: Whether to retrieve all pages of results (default: True)
     
     Note: This feature is only available for GitHub Enterprise Cloud customers.
     
@@ -139,8 +203,8 @@ async def list_consumed_licenses(ctx: Context, include_users: bool = False) -> C
     """
     global github_client
     
-    # Call the consumed-licenses API endpoint
-    consumed_licenses_data = await github_client.get("/consumed-licenses")
+    # Call the consumed-licenses API endpoint with pagination if needed
+    consumed_licenses_data = await github_client.get_consumed_licenses(full=full_pagination)
     
     # Create the response with summary information
     response = ConsumedLicensesResponse(
@@ -151,7 +215,7 @@ async def list_consumed_licenses(ctx: Context, include_users: bool = False) -> C
     )
     
     # Optionally include detailed user information
-    if include_users and "users" in consumed_licenses_data:
+    if include_users and "seats" in consumed_licenses_data:
         response.users = [
             LicenseUserDetail(
                 github_com_login=user.get("github_com_login", ""),
@@ -162,7 +226,7 @@ async def list_consumed_licenses(ctx: Context, include_users: bool = False) -> C
                 github_com_saml_name_id=user.get("github_com_saml_name_id"),
                 github_com_two_factor_auth=user.get("github_com_two_factor_auth")
             )
-            for user in consumed_licenses_data.get("users", [])
+            for user in consumed_licenses_data.get("seats", [])
         ]
     
     return response
@@ -206,39 +270,69 @@ async def get_github_consumed_licenses(dummy: str) -> ConsumedLicensesResponse:
     )
     
     try:
-        # Make request to the consumed-licenses endpoint
-        url = f"{enterprise_url}/consumed-licenses"
-        async with session.get(url) as response:
-            if response.status == 200:
-                data = await response.json()
-                
-                # Create the response with summary information
-                response = ConsumedLicensesResponse(
-                    summary=LicenseSummary(
-                        total_seats_consumed=data.get("total_seats_consumed", 0),
-                        total_seats_purchased=data.get("total_seats_purchased", 0)
-                    )
+        # Get all paginated results
+        all_results = {
+            "total_seats_purchased": 0,
+            "total_seats_consumed": 0,
+            "seats": []
+        }
+        
+        # Start with page 1
+        page = 1
+        
+        while True:
+            params = {"per_page": 100, "page": page}
+            url = f"{enterprise_url}/consumed-licenses"
+            
+            async with session.get(url, params=params) as response:
+                if response.status == 200:
+                    current_page_data = await response.json()
+                    
+                    # For first page, get the summary information
+                    if page == 1:
+                        all_results["total_seats_purchased"] = current_page_data.get("total_seats_purchased", 0)
+                        all_results["total_seats_consumed"] = current_page_data.get("total_seats_consumed", 0)
+                    
+                    # Add the users/seats from this page
+                    if "seats" in current_page_data:
+                        all_results["seats"].extend(current_page_data["seats"])
+                    
+                    # Check if we're done paginating
+                    link_header = response.headers.get("Link", "")
+                    if not link_header or 'rel="next"' not in link_header:
+                        break
+                    
+                    # Move to next page
+                    page += 1
+                else:
+                    text = await response.text()
+                    raise Exception(f"GitHub API error: {response.status} - {text}")
+        
+        # Create the response with summary information
+        resp = ConsumedLicensesResponse(
+            summary=LicenseSummary(
+                total_seats_consumed=all_results.get("total_seats_consumed", 0),
+                total_seats_purchased=all_results.get("total_seats_purchased", 0)
+            )
+        )
+        
+        # Include detailed user information
+        if "seats" in all_results:
+            resp.users = [
+                LicenseUserDetail(
+                    github_com_login=user.get("github_com_login", ""),
+                    github_com_name=user.get("github_com_name"),
+                    license_type=user.get("license_type", "Unknown"),
+                    github_com_profile=user.get("github_com_profile"),
+                    github_com_verified_domain_emails=user.get("github_com_verified_domain_emails", []),
+                    github_com_saml_name_id=user.get("github_com_saml_name_id"),
+                    github_com_two_factor_auth=user.get("github_com_two_factor_auth")
                 )
+                for user in all_results.get("seats", [])
+            ]
+            
+        return resp
                 
-                # Include detailed user information
-                if "users" in data:
-                    response.users = [
-                        LicenseUserDetail(
-                            github_com_login=user.get("github_com_login", ""),
-                            github_com_name=user.get("github_com_name"),
-                            license_type=user.get("license_type", "Unknown"),
-                            github_com_profile=user.get("github_com_profile"),
-                            github_com_verified_domain_emails=user.get("github_com_verified_domain_emails", []),
-                            github_com_saml_name_id=user.get("github_com_saml_name_id"),
-                            github_com_two_factor_auth=user.get("github_com_two_factor_auth")
-                        )
-                        for user in data.get("users", [])
-                    ]
-                
-                return response
-            else:
-                text = await response.text()
-                raise Exception(f"GitHub API error: {response.status} - {text}")
     finally:
         await session.close()
 
