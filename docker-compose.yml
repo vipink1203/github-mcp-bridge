@@ -5,7 +5,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: mcp-ghe-connector
+    container_name: mcp-github-enterprise
     environment:
       - GITHUB_TOKEN=${GITHUB_TOKEN}
       - GITHUB_ENTERPRISE_URL=${GITHUB_ENTERPRISE_URL:-https://api.github.com}
