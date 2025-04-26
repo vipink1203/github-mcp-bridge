@@ -48,8 +48,8 @@ A Model Context Protocol (MCP) server that lets AI agents (Claude, ChatGPT, etc.
 
 ### 1. Clone & Install
 ```bash
-git clone https://github.com/vipink1203/mcp-ghe-connector.git
-cd mcp-ghe-connector
+git clone https://github.com/vipink1203/mcp-github-enterprise.git
+cd mcp-github-enterprise
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
@@ -82,7 +82,7 @@ Add this service to your docker-compose.yml alongside n8n:
 ```yaml
 services:
   github-mcp:
-    image: ghcr.io/vipink1203/mcp-ghe-connector:latest
+    image: ghcr.io/vipink1203/mcp-github-enterprise:latest
     environment:
       - GITHUB_TOKEN=${GITHUB_TOKEN}
       - GITHUB_ENTERPRISE_URL=${GITHUB_ENTERPRISE_URL}
