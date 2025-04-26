@@ -31,7 +31,7 @@ A powerful Model Context Protocol (MCP) server that enables AI agents (like Clau
 - Use "include_users" flag to see detailed user information in license reports
 - For large enterprises, set "full_pagination" to true for complete data
 
-![GitHub MCP Bridge Diagram](https://raw.githubusercontent.com/vipink1203/github-mcp-bridge/main/docs/images/diagram.png)
+![GitHub MCP Bridge Diagram](https://raw.githubusercontent.com/vipink1203/github-mcp-bridge/main/docs/images/diagram.svg)
 
 ## 🌟 Features
 
