@@ -14,17 +14,17 @@ from tenacity import AsyncRetrying, stop_after_attempt, wait_exponential
 from mcp.server.fastmcp import FastMCP, Context
 from pydantic import BaseModel, Field, root_validator
 
-# Configure logging
+# ——— TROUBLESHOOTING: confirm this file loads ———
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger("github-mcp")
+logger.info("🔥 Loading GitHub Enterprise MCP from main.py 🔥")
 
 # --- Helpers --------------------------------------------------------------
 
 def parse_next_link(link_header: str) -> Optional[str]:
-    """Parse the RFC5988 Link header and return the URL for rel="next"."""
     for part in link_header.split(","):
         url_part, *params = part.split(";")
         url = url_part.strip().strip("<>")
@@ -58,7 +58,6 @@ class GitHubClient:
             await self.session.close()
 
     async def _request_with_retry(self, method: str, url: str, **kwargs) -> aiohttp.ClientResponse:
-        """Internal: perform request with retry/backoff."""
         async for attempt in AsyncRetrying(
             stop=stop_after_attempt(3),
             wait=wait_exponential(min=1, max=10),
@@ -68,7 +67,6 @@ class GitHubClient:
                 session = await self.ensure_session()
                 resp = await session.request(method, url, **kwargs)
                 if resp.status in (429, 500, 502, 503, 504):
-                    # treat as retryable
                     text = await resp.text()
                     logger.warning(f"Retryable error {resp.status}: {text}")
                     resp.release()
@@ -79,7 +77,6 @@ class GitHubClient:
                 return resp
 
     async def get_all_paginated_results(self, endpoint: str, per_page: int = 100) -> Dict[str, Any]:
-        """Fetch all pages from a paginated REST endpoint, returning {'total_seats', 'users': [...]}."""
         url = f"{self.base}{endpoint}"
         all_data: Dict[str, Any] = {
             "total_seats_purchased": 0,
@@ -102,7 +99,6 @@ class GitHubClient:
         logger.info(f"Fetched {len(all_data['users'])} users across licenses")
         return all_data
 
-    # Cache the full pagination call for 3 hours
     _license_cache = TTLCache(maxsize=1, ttl=3 * 60 * 60)
 
     @cached(_license_cache)
@@ -110,10 +106,8 @@ class GitHubClient:
         return await self.get_all_paginated_results("/consumed-licenses")
 
     async def fetch_consumed_licenses(self, full: bool = True) -> Dict[str, Any]:
-        """Public: if full=True uses cached full pagination, else fetch only first page."""
         if full:
             return await self._fetch_consumed_licenses()
-        # one‐page call without caching
         resp = await self._request_with_retry("GET", f"{self.base}/consumed-licenses")
         return await resp.json()
 
@@ -144,7 +138,6 @@ class LicenseUserDetail(BaseModel):
     visual_studio_subscription_user: Optional[bool] = None
     enterprise_server_user_ids: List[str] = Field(default_factory=list)
     github_com_member_roles: List[str] = Field(default_factory=list)
-    # normalize singular/plural
     github_com_enterprise_roles: List[str] = Field(default_factory=list, alias="github_com_enterprise_roles")
     github_com_enterprise_role: Optional[str] = Field(None, alias="github_com_enterprise_role")
     github_com_orgs_with_pending_invites: List[str] = Field(default_factory=list)
@@ -155,7 +148,6 @@ class LicenseUserDetail(BaseModel):
 
     @root_validator(pre=True)
     def unify_enterprise_roles(cls, values):
-        # coalesce singular into plural if present
         single = values.get("github_com_enterprise_role")
         plural = values.get("github_com_enterprise_roles", [])
         if single and single not in plural:
@@ -209,10 +201,7 @@ async def list_consumed_licenses(
         )
     )
     if include_users:
-        resp.users = [
-            LicenseUserDetail(**u)
-            for u in data.get("users", [])
-        ]
+        resp.users = [LicenseUserDetail(**u) for u in data.get("users", [])]
     return resp
 
 @mcp.tool()
@@ -257,16 +246,19 @@ async def get_user_detail(
             return LicenseUserDetail(**u)
     raise ValueError(f"User '{username}' not found")
 
-# Expose the same via resource
 @mcp.resource("github://consumed-licenses/{dummy}")
 async def get_github_consumed_licenses(dummy: str) -> ConsumedLicensesResponse:
     return await list_consumed_licenses(None, include_users=True, full_pagination=True)
 
 @mcp.resource("github://user/{username}/roles")
 async def get_github_user_roles(username: str) -> Dict[str, Any]:
-    orgs   = await get_user_organizations(None, username, True)
-    roles  = await get_user_enterprise_roles(None, username, True)
+    orgs  = await get_user_organizations(None, username, True)
+    roles = await get_user_enterprise_roles(None, username, True)
     return {"organizations": orgs, "enterprise_roles": roles}
+
+# ——— TROUBLESHOOTING: dump what got registered ———
+logger.info(f"Registered tools: {list(mcp.tools.keys())}")
+logger.info(f"Registered resources: {list(mcp.resources.keys())}")
 
 # --- Main -------------------------------------------------------------
 
