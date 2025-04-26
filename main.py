@@ -276,9 +276,10 @@ async def get_github_user_roles(username: str) -> Dict[str, Any]:
     roles = await get_user_enterprise_roles(None, username, True)
     return {"organizations": orgs, "enterprise_roles": roles}
 
-# ——— TROUBLESHOOTING: dump what got registered ———
-logger.info(f"Registered tools: {list(mcp.tools.keys())}")
-logger.info(f"Registered resources: {list(mcp.resources.keys())}")
+# ——— TROUBLESHOOTING: inspect the FastMCP instance ———
+attrs = dir(mcp)
+logger.info(f"FastMCP instance attributes ({len(attrs)}): {attrs}")
+# You can now look through the logged attribute list to find how your tools/resources got registered.
 
 # --- Main -------------------------------------------------------------
 
