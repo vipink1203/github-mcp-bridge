@@ -1,19 +1,29 @@
 FROM python:3.11-slim
 
+LABEL maintainer="vipink1203@gmail.com"
+
 WORKDIR /app
 
-# Install dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Install and pin dependencies
+COPY requirements.txt ./
+RUN pip install --upgrade pip \
+ && pip install --no-cache-dir -r requirements.txt
 
-# Copy application code
-COPY main.py .
+# Copy *all* your code (not just main.py) so imports will work
+COPY . .
 
-# Set environment variables
-ENV PYTHONUNBUFFERED=1
-ENV TRANSPORT=stdio
-ENV PORT=8050
-ENV HOST=0.0.0.0
+# Expose the SSE port by default (for transport=sse)
+EXPOSE 8050
 
-# Run the application
+# Default to SSE mode in containers — override at runtime if you really want stdio
+ENV PYTHONUNBUFFERED=1 \
+    TRANSPORT=sse \
+    PORT=8050 \
+    HOST=0.0.0.0
+
+# Optional healthcheck for Kubernetes or Docker Compose
+HEALTHCHECK --interval=30s --timeout=3s \
+  CMD curl -f http://localhost:${PORT}/health || exit 1
+
+# Run the MCP server
 CMD ["python", "main.py"]
