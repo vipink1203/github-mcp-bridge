@@ -1,4 +1,4 @@
-# MCP GHE CONNECTOR 🌉
+# MCP GITHUB ENTERPRISE 🌉
 [![Python >=3.9](https://img.shields.io/badge/python-3.9%2B-blue)](https://www.python.org/downloads/)  
 [![MCP Protocol](https://img.shields.io/badge/MCP-Protocol-purple)](https://github.com/modelcontextprotocol/python-sdk)  
 [![GitHub API](https://img.shields.io/badge/GitHub-API-black)](https://docs.github.com/en/rest)
