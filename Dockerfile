@@ -1,6 +1,6 @@
 FROM python:3.11-slim
 
-LABEL maintainer="vipink1203@gmail.com"
+LABEL maintainer="vipink1203"
 
 WORKDIR /app
 
