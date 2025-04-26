@@ -8,8 +8,6 @@ import certifi
 from typing import Dict, List, Optional, Any, AsyncIterator
 from contextlib import asynccontextmanager
 
-from tenacity import AsyncRetrying, stop_after_attempt, wait_exponential
-
 from mcp.server.fastmcp import FastMCP, Context
 from pydantic import BaseModel, Field, root_validator
 
@@ -62,23 +60,36 @@ class GitHubClient:
             await self.session.close()
 
     async def _request_with_retry(self, method: str, url: str, **kwargs) -> aiohttp.ClientResponse:
-        async for attempt in AsyncRetrying(
-            stop=stop_after_attempt(3),
-            wait=wait_exponential(min=1, max=10),
-            reraise=True
-        ):
-            with attempt:
+        retry_statuses = {429, 500, 502, 503, 504}
+        max_attempts = 3
+
+        for attempt in range(1, max_attempts + 1):
+            try:
                 session = await self.ensure_session()
                 resp = await session.request(method, url, **kwargs)
-                if resp.status in (429, 500, 502, 503, 504):
-                    text = await resp.text()
-                    logger.warning(f"Retryable error {resp.status}: {text}")
-                    resp.release()
-                    raise aiohttp.ClientResponseError(
-                        resp.request_info, resp.history,
-                        status=resp.status, message=text
-                    )
-                return resp
+            except Exception as e:
+                if attempt < max_attempts:
+                    backoff = 2 ** (attempt - 1)
+                    logger.warning(f"Request error ({e}), retry #{attempt} in {backoff}s")
+                    await asyncio.sleep(backoff)
+                    continue
+                raise
+
+            if resp.status in retry_statuses:
+                text = await resp.text()
+                logger.warning(f"Retryable HTTP {resp.status}: {text}")
+                await resp.release()
+                if attempt < max_attempts:
+                    backoff = 2 ** (attempt - 1)
+                    logger.info(f"Waiting {backoff}s before retry #{attempt+1}")
+                    await asyncio.sleep(backoff)
+                    continue
+                raise Exception(f"Failed after {attempt} attempts: {resp.status} - {text}")
+
+            return resp
+
+        # Should never reach here
+        raise Exception("Exceeded retry loop unexpectedly")
 
     async def get_all_paginated_results(self, endpoint: str, per_page: int = 100) -> Dict[str, Any]:
         url = f"{self.base}{endpoint}"
