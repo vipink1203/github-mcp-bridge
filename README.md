@@ -106,18 +106,18 @@ In n8n's UI, enable the MCP client:
  Add this configuration to your Claude Desktop settings:
  
  ```json
- {
+{
    "mcpServers": {
-     "github": {
-       "command": "/path/to/your/venv/python",
-       "args": ["/path/to/main.py"],
-       "env": {
-         "GITHUB_TOKEN": "your_github_token",
-         "TRANSPORT": "stdio"
-       }
-     }
-   }
- }
+    "github-ent": {
+      "command": "/path/to/your/venv/python",
+      "args": ["/path/to/main.py"],
+      "env": {
+        "GITHUB_TOKEN": "",
+        "GITHUB_ENTERPRISE_URL": "https://api.github.com/enterprises/{enterprise_name}",
+        "TRANSPORT": "stdio"
+      }
+    }
+}
  ```
  
  ### SSE Configuration
