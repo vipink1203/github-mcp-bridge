@@ -4,25 +4,50 @@
 [![MCP Protocol](https://img.shields.io/badge/MCP-Protocol-purple)](https://github.com/modelcontextprotocol/python-sdk)
 [![GitHub API](https://img.shields.io/badge/GitHub-API-black)](https://docs.github.com/en/rest)
 
-A powerful Model Context Protocol (MCP) server that enables AI agents (like Claude, ChatGPT, and others) to securely access and interact with GitHub Enterprise data. This project provides a bridge between AI systems and GitHub's Enterprise features, allowing for access to enterprise users, organizations, emails, and license information.
+A powerful Model Context Protocol (MCP) server that enables AI agents (like Claude, ChatGPT, and others) to securely access and interact with GitHub Enterprise data. This bridge provides deep insights into your enterprise's license usage and user information.
+
+## 📊 Capabilities & Example Prompts
+
+### License Management and Usage Insights
+- **"Show me our GitHub Enterprise license summary"** - Get total seats purchased and consumed
+- **"How many GitHub licenses are we currently using?"** - Quick overview of license usage
+- **"List all our consumed GitHub licenses"** - Detailed breakdown of all used licenses
+- **"Do we have any unused GitHub licenses?"** - Check for available licenses
+
+### User Information and Organization Access
+- **"What GitHub organizations is username@example.com part of?"** - Find user's organizations
+- **"What enterprise roles does username have?"** - Check for admin privileges
+- **"Is username an owner of any GitHub organizations?"** - Verify ownership status
+- **"Get detailed information about username"** - Complete user profile
+
+### Enterprise Administration
+- **"Which users have owner access to our GitHub Enterprise?"** - Find privileged users
+- **"Show me all users with SAML identities in GitHub"** - Check SSO integration
+- **"List all users with 2FA enabled in GitHub"** - Security compliance check
+- **"How many Visual Studio subscribers have GitHub licenses?"** - Cross-product license usage
+
+### Best Practices for Effective Queries
+- Be specific with usernames when asking about individual users
+- Use "include_users" flag to see detailed user information in license reports
+- For large enterprises, set "full_pagination" to true for complete data
 
 ![GitHub MCP Bridge Diagram](https://raw.githubusercontent.com/vipink1203/github-mcp-bridge/main/docs/images/diagram.png)
 
 ## 🌟 Features
 
-- **User Management**: List all enterprise users and get detailed information
-- **Organization Access**: View all organizations and their details
-- **Email Retrieval**: Access user email information (requires admin privileges)
-- **License Management**: View and manage enterprise licenses, including consumed licenses
+- **License Analytics**: Get comprehensive insights into your GitHub Enterprise license usage
+- **User Management**: Analyze detailed user information including organization access
+- **Role Inspection**: Check user permissions across both organizations and enterprise
+- **Deep Integration**: Extracts rich data from the consumed-licenses endpoint
+- **Full Pagination**: Automatically handles large datasets with multiple pages
 - **Dual Transport Support**: Use stdio for direct integration or SSE for service deployment
 - **Kubernetes Ready**: Deploy in EKS, GKE, or any Kubernetes environment
-- **n8n Integration**: Create workflows with GitHub Enterprise data
 
 ## 📋 Prerequisites
 
 - Python 3.9+
 - GitHub Personal Access Token with appropriate scopes
-- GitHub Enterprise instance (optional, can use github.com API)
+- GitHub Enterprise Cloud (required for license consumption data)
 
 ## 🚀 Quick Start
 
@@ -60,7 +85,7 @@ chmod +x setup.sh
 For stdio transport (direct integration with MCP clients):
 ```bash
 export GITHUB_TOKEN=your_github_token
-export GITHUB_ENTERPRISE_NAME=your_enterprise_name
+export GITHUB_ENTERPRISE_URL=https://api.github.com/enterprises/your-enterprise-name
 export TRANSPORT=stdio
 python main.py
 ```
@@ -68,7 +93,7 @@ python main.py
 For SSE transport (standalone service):
 ```bash
 export GITHUB_TOKEN=your_github_token
-export GITHUB_ENTERPRISE_NAME=your_enterprise_name
+export GITHUB_ENTERPRISE_URL=https://api.github.com/enterprises/your-enterprise-name
 export TRANSPORT=sse
 export PORT=8050
 python main.py
@@ -95,8 +120,7 @@ services:
     container_name: github-mcp-bridge
     environment:
       - GITHUB_TOKEN=${GITHUB_TOKEN}
-      - GITHUB_ENTERPRISE_URL=${GITHUB_ENTERPRISE_URL:-https://api.github.com}
-      - GITHUB_ENTERPRISE_NAME=${GITHUB_ENTERPRISE_NAME}
+      - GITHUB_ENTERPRISE_URL=${GITHUB_ENTERPRISE_URL}
       - TRANSPORT=sse
       - PORT=8050
       - HOST=0.0.0.0
@@ -110,7 +134,7 @@ services:
 Make sure to add your GitHub token to your `.env` file:
 ```
 GITHUB_TOKEN=your_github_token_here
-GITHUB_ENTERPRISE_NAME=your_enterprise_name
+GITHUB_ENTERPRISE_URL=https://api.github.com/enterprises/your-enterprise-name
 ```
 
 ### Option 2: Using docker-compose.override.yml
@@ -135,7 +159,7 @@ services:
     container_name: github-mcp-bridge
     environment:
       - GITHUB_TOKEN=${GITHUB_TOKEN}
-      - GITHUB_ENTERPRISE_NAME=${GITHUB_ENTERPRISE_NAME}
+      - GITHUB_ENTERPRISE_URL=${GITHUB_ENTERPRISE_URL}
       - TRANSPORT=sse
       - PORT=8050
     ports:
@@ -147,7 +171,7 @@ services:
 2. Update your `.env` file to include the GitHub token:
 ```
 GITHUB_TOKEN=your_github_token_here
-GITHUB_ENTERPRISE_NAME=your_enterprise_name
+GITHUB_ENTERPRISE_URL=https://api.github.com/enterprises/your-enterprise-name
 ```
 
 3. Run your Docker Compose as usual:
@@ -182,8 +206,7 @@ services:
     container_name: github-mcp-bridge
     environment:
       - GITHUB_TOKEN=${GITHUB_TOKEN}
-      - GITHUB_ENTERPRISE_URL=${GITHUB_ENTERPRISE_URL:-https://api.github.com}
-      - GITHUB_ENTERPRISE_NAME=${GITHUB_ENTERPRISE_NAME}
+      - GITHUB_ENTERPRISE_URL=${GITHUB_ENTERPRISE_URL}
       - TRANSPORT=sse
       - PORT=8050
       - HOST=0.0.0.0
@@ -249,25 +272,26 @@ docker exec -it n8n curl http://github-mcp:8050/health
 
 | Tool | Description |
 |------|-------------|
-| `list_enterprise_users` | Get all users in the GitHub Enterprise instance |
-| `get_user_info` | Get detailed information for a specific user |
-| `list_user_organizations` | Get all organizations a user belongs to |
-| `list_enterprise_organizations` | Get all organizations in the enterprise |
-| `get_user_emails` | Get email addresses for a user |
-| `list_enterprise_licenses` | Get all licenses in the GitHub Enterprise instance |
-| `get_license_info` | Get detailed information for a specific license |
-| `list_consumed_licenses` | Get all consumed licenses with detailed user information |
+| `list_consumed_licenses` | Get a summary of license usage with optional user details |
+| `get_user_organizations` | Get all organizations a specific user belongs to |
+| `get_user_enterprise_roles` | Get enterprise roles for a specific user |
+| `get_user_detail` | Get detailed information for a specific user |
 
 ### Available Resources
 
 | Resource | Description |
 |----------|-------------|
-| `github://users/{dummy}` | List of all GitHub Enterprise users |
-| `github://organizations/{dummy}` | List of all GitHub Enterprise organizations |
-| `github://user/{username}` | Information about a specific user |
-| `github://user/{username}/organizations` | Organizations for a specific user |
-| `github://licenses/{dummy}` | List of all GitHub Enterprise licenses |
-| `github://consumed-licenses/{dummy}` | List of all consumed licenses with user details |
+| `github://consumed-licenses/{dummy}` | Complete license usage data with all user details |
+| `github://user/{username}/roles` | Organization and enterprise roles for a specific user |
+
+### Tool Parameters
+
+| Tool | Parameters |
+|------|------------|
+| `list_consumed_licenses` | `include_users`: Include detailed user information (default: False)<br>`full_pagination`: Retrieve all pages (default: True) |
+| `get_user_organizations` | `username`: GitHub username to look up<br>`full_pagination`: Retrieve all pages (default: True) |
+| `get_user_enterprise_roles` | `username`: GitHub username to look up<br>`full_pagination`: Retrieve all pages (default: True) |
+| `get_user_detail` | `username`: GitHub username to look up<br>`full_pagination`: Retrieve all pages (default: True) |
 
 ## 🔌 Client Configuration
 
@@ -280,7 +304,7 @@ The Claude Desktop settings file is located at:
 - On Windows: `%APPDATA%\Claude Desktop\settings.json` 
 - On Linux: `~/.config/Claude Desktop/settings.json`
 
-You can use any name for your MCP server (not just "github"). Here's an example using "github-ent" as the server name:
+You can use any name for your MCP server. Here's an example using "github-ent" as the server name:
 
 ```json
 {
@@ -290,7 +314,7 @@ You can use any name for your MCP server (not just "github"). Here's an example 
       "args": ["/path/to/github-mcp-bridge/main.py"],
       "env": {
         "GITHUB_TOKEN": "your_github_token",
-        "GITHUB_ENTERPRISE_NAME": "your_enterprise_name",
+        "GITHUB_ENTERPRISE_URL": "https://api.github.com/enterprises/your-enterprise-name",
         "TRANSPORT": "stdio"
       }
     }
@@ -302,14 +326,14 @@ Make sure to replace:
 - `/path/to/your/venv/python` with the full path to the Python executable in your virtual environment
 - `/path/to/github-mcp-bridge/main.py` with the full path to the main.py file
 - `your_github_token` with your GitHub Personal Access Token
-- `your_enterprise_name` with your GitHub Enterprise name
+- `your-enterprise-name` with your GitHub Enterprise name
 
 After editing the settings file, restart Claude Desktop for the changes to take effect.
 
 #### Testing the Integration
 
 You can test the integration by asking Claude:
-"Can you list the GitHub Enterprise users using the github-ent MCP tool?"
+"Can you list our GitHub Enterprise license usage using the github-ent MCP tool?"
 
 ### SSE Configuration
 
@@ -330,7 +354,7 @@ In this case, you'll need to start the server separately before using it with Cl
 
 ```bash
 export GITHUB_TOKEN=your_github_token
-export GITHUB_ENTERPRISE_NAME=your_enterprise_name
+export GITHUB_ENTERPRISE_URL=https://api.github.com/enterprises/your-enterprise-name
 export TRANSPORT=sse
 export PORT=8050
 python main.py
@@ -367,11 +391,11 @@ spec:
             secretKeyRef:
               name: github-mcp-secrets
               key: github-token
-        - name: GITHUB_ENTERPRISE_NAME
+        - name: GITHUB_ENTERPRISE_URL
           valueFrom:
             secretKeyRef:
               name: github-mcp-secrets
-              key: enterprise-name
+              key: enterprise-url
         - name: TRANSPORT
           value: "sse"
         ports:
@@ -382,11 +406,11 @@ For a complete EKS deployment guide, see the [wiki](https://github.com/vipink120
 
 ## 📊 Example Use Cases
 
-- **Enterprise User Management**: Automate user onboarding and offboarding
-- **License Monitoring**: Get alerts when licenses are close to expiration
-- **License Consumption Analysis**: Track which users are consuming licenses across different organizations
-- **Organization Analysis**: Analyze organization structures and relationships
-- **User Access Auditing**: Track user permissions and access levels
+- **License Optimization**: Identify unused licenses to reduce costs
+- **Security Compliance**: Check which users have 2FA enabled
+- **Organization Auditing**: Review owner access across the enterprise
+- **User Management**: Find which organizations users belong to
+- **License Planning**: Track license consumption for budget planning
 - **AI-powered GitHub Insights**: Let AI analyze your enterprise GitHub data
 
 ## 🔒 Security Considerations
