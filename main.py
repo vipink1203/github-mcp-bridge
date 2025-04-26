@@ -1,14 +1,13 @@
 import os
+import time
 import logging
 import asyncio
 import aiohttp
 import ssl
 import certifi
-import re
 from typing import Dict, List, Optional, Any, AsyncIterator
 from contextlib import asynccontextmanager
 
-from cachetools import TTLCache, cached
 from tenacity import AsyncRetrying, stop_after_attempt, wait_exponential
 
 from mcp.server.fastmcp import FastMCP, Context
@@ -46,6 +45,11 @@ class GitHubClient:
         }
         self.ssl_context = ssl.create_default_context(cafile=certifi.where())
         self.session: Optional[aiohttp.ClientSession] = None
+
+        # Simple in-memory TTL cache for consumed-licenses
+        self._license_cache_data: Optional[Dict[str, Any]] = None
+        self._license_cache_ts: float = 0.0
+        self._cache_ttl = 3 * 60 * 60  # 3 hours
 
     async def ensure_session(self) -> aiohttp.ClientSession:
         if not self.session or self.session.closed:
@@ -99,11 +103,16 @@ class GitHubClient:
         logger.info(f"Fetched {len(all_data['users'])} users across licenses")
         return all_data
 
-    _license_cache = TTLCache(maxsize=1, ttl=3 * 60 * 60)
-
-    @cached(_license_cache)
     async def _fetch_consumed_licenses(self) -> Dict[str, Any]:
-        return await self.get_all_paginated_results("/consumed-licenses")
+        now = time.time()
+        if self._license_cache_data and (now - self._license_cache_ts) < self._cache_ttl:
+            logger.info("Returning cached consumed-licenses data")
+            return self._license_cache_data
+
+        data = await self.get_all_paginated_results("/consumed-licenses")
+        self._license_cache_data = data
+        self._license_cache_ts = now
+        return data
 
     async def fetch_consumed_licenses(self, full: bool = True) -> Dict[str, Any]:
         if full:
