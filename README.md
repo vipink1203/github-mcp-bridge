@@ -1,4 +1,4 @@
-# GitHub MCP Bridge 🌉
+# MCP GHE CONNECTOR 🌉
 [![Python >=3.9](https://img.shields.io/badge/python-3.9%2B-blue)](https://www.python.org/downloads/)  
 [![MCP Protocol](https://img.shields.io/badge/MCP-Protocol-purple)](https://github.com/modelcontextprotocol/python-sdk)  
 [![GitHub API](https://img.shields.io/badge/GitHub-API-black)](https://docs.github.com/en/rest)
@@ -48,8 +48,8 @@ A Model Context Protocol (MCP) server that lets AI agents (Claude, ChatGPT, etc.
 
 ### 1. Clone & Install
 ```bash
-git clone https://github.com/vipink1203/github-mcp-bridge.git
-cd github-mcp-bridge
+git clone https://github.com/vipink1203/mcp-ghe-connector.git
+cd mcp-ghe-connector
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
@@ -82,7 +82,7 @@ Add this service to your docker-compose.yml alongside n8n:
 ```yaml
 services:
   github-mcp:
-    image: ghcr.io/vipink1203/github-mcp-bridge:latest
+    image: ghcr.io/vipink1203/mcp-ghe-connector:latest
     environment:
       - GITHUB_TOKEN=${GITHUB_TOKEN}
       - GITHUB_ENTERPRISE_URL=${GITHUB_ENTERPRISE_URL}
