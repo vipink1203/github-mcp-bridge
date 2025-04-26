@@ -99,6 +99,50 @@ In n8n's UI, enable the MCP client:
 - Settings → Credentials → New Credential
 - Choose MCP Client API, set URL to http://github-mcp:8050/sse
 
+## 🔌 Client Configuration
+ 
+ ### Claude Desktop / Windsurf / Cursor
+ 
+ Add this configuration to your Claude Desktop settings:
+ 
+ ```json
+ {
+   "mcpServers": {
+     "github": {
+       "command": "/path/to/your/venv/python",
+       "args": ["/path/to/main.py"],
+       "env": {
+         "GITHUB_TOKEN": "your_github_token",
+         "TRANSPORT": "stdio"
+       }
+     }
+   }
+ }
+ ```
+ 
+ ### SSE Configuration
+ 
+ ```json
+ {
+   "mcpServers": {
+     "github": {
+       "transport": "sse",
+       "url": "http://localhost:8050/sse"
+     }
+   }
+ }
+ ```
+
+ 
+ ## 📊 Example Use Cases
+ 
+ - **Enterprise User Management**: Automate user onboarding and offboarding
+ - **License Monitoring**: Get alerts when licenses are close to expiration
+ - **Organization Analysis**: Analyze organization structures and relationships
+ - **User Access Auditing**: Track user permissions and access levels
+ - **AI-powered GitHub Insights**: Let AI analyze your enterprise GitHub data
+
+
 ## 🔌 MCP Tools & Resources
 
 ### Tools
@@ -117,14 +161,34 @@ In n8n's UI, enable the MCP client:
 | `github://consumed-licenses/{dummy}` | Full license usage + user details |
 | `github://user/{username}/roles` | Org & enterprise roles for a user |
 
-## 🤝 Contributing
 
-1. Fork & branch
-2. `git commit -m "feat: …"`
-3. `git push` & open a PR
-
-## 📜 License
-
-MIT — see LICENSE
+ ## 🔒 Security Considerations
+ 
+ - Store your GitHub token securely
+ - Use appropriate scopes for your GitHub token
+ - For production, consider using AWS Secrets Manager or similar
+ - Implement network policies in Kubernetes deployments
+ 
+ ## 🤝 Contributing
+ 
+ Contributions are welcome! Please feel free to submit a Pull Request.
+ 
+ 1. Fork the repository
+ 2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+ 3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+ 4. Push to the branch (`git push origin feature/amazing-feature`)
+ 5. Open a Pull Request
+ 
+ ## 📜 License
+ 
+ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+ 
+ ## 🙏 Acknowledgements
+ 
+ - [Model Context Protocol](https://github.com/modelcontextprotocol/python-sdk) for the Python SDK
+ - [MCP-Mem0](https://github.com/coleam00/mcp-mem0) for providing a great template structure
+ - [GitHub API](https://docs.github.com/en/rest) for the comprehensive API
+ 
+ ---
 
 Built with ❤️ for seamless AI ↔️ GitHub Enterprise integration.
