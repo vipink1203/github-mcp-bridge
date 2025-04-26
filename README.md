@@ -4,7 +4,7 @@
 [![MCP Protocol](https://img.shields.io/badge/MCP-Protocol-purple)](https://github.com/modelcontextprotocol/python-sdk)
 [![GitHub API](https://img.shields.io/badge/GitHub-API-black)](https://docs.github.com/en/rest)
 
-A powerful Model Context Protocol (MCP) server that enables AI agents (like Claude, ChatGPT, and others) to securely access and interact with GitHub Enterprise data. This bridge provides deep insights into your enterprise's license usage and user information.
+A powerful Model Context Protocol (MCP) server that enables AI agents (like Claude, ChatGPT, and others) to securely access and interact with GitHub Enterprise license data. This bridge provides insights into your enterprise's license usage and user information through the consumed-licenses endpoint.
 
 ## 📊 Capabilities & Example Prompts
 
@@ -14,31 +14,27 @@ A powerful Model Context Protocol (MCP) server that enables AI agents (like Clau
 - **"List all our consumed GitHub licenses"** - Detailed breakdown of all used licenses
 - **"Do we have any unused GitHub licenses?"** - Check for available licenses
 
-### User Information and Organization Access
-- **"What GitHub organizations is username@example.com part of?"** - Find user's organizations
-- **"What enterprise roles does username have?"** - Check for admin privileges
-- **"Is username an owner of any GitHub organizations?"** - Verify ownership status
-- **"Get detailed information about username"** - Complete user profile
-
-### Enterprise Administration
-- **"Which users have owner access to our GitHub Enterprise?"** - Find privileged users
-- **"Show me all users with SAML identities in GitHub"** - Check SSO integration
-- **"List all users with 2FA enabled in GitHub"** - Security compliance check
-- **"How many Visual Studio subscribers have GitHub licenses?"** - Cross-product license usage
+### User-Specific Information (requires knowing the username)
+- **"What GitHub organizations does johndoe belong to?"** - Find specific user's organizations
+- **"What enterprise roles does johndoe have?"** - Check roles for a specific user
+- **"Is johndoe an owner of any GitHub organizations?"** - Verify ownership status for a user
+- **"Get detailed information about johndoe"** - Complete profile for a specific user
+- **"Does johndoe have 2FA enabled in GitHub?"** - Check 2FA status for a specific user
+- **"Show me johndoe's SAML identity information"** - View SAML details for a specific user
 
 ### Best Practices for Effective Queries
-- Be specific with usernames when asking about individual users
-- Use "include_users" flag to see detailed user information in license reports
-- For large enterprises, set "full_pagination" to true for complete data
+- Always specify the exact GitHub username when asking about individual users
+- Use "include_users=True" to see detailed user information in license reports
+- For large enterprises, ensure "full_pagination=True" is enabled to see all users
 
-![GitHub MCP Bridge Diagram](https://raw.githubusercontent.com/vipink1203/github-mcp-bridge/main/images/diagram.png)
+![GitHub MCP Bridge Diagram](https://raw.githubusercontent.com/vipink1203/github-mcp-bridge/main/docs/images/diagram.png)
 
 ## 🌟 Features
 
 - **License Analytics**: Get comprehensive insights into your GitHub Enterprise license usage
-- **User Management**: Analyze detailed user information including organization access
-- **Role Inspection**: Check user permissions across both organizations and enterprise
-- **Deep Integration**: Extracts rich data from the consumed-licenses endpoint
+- **User Lookup**: Get detailed information about specific users by username
+- **Organization Access**: See what organizations a specific user belongs to
+- **Role Inspection**: Check permissions for specific users across organizations and enterprise
 - **Full Pagination**: Automatically handles large datasets with multiple pages
 - **Dual Transport Support**: Use stdio for direct integration or SSE for service deployment
 - **Kubernetes Ready**: Deploy in EKS, GKE, or any Kubernetes environment
@@ -333,7 +329,7 @@ After editing the settings file, restart Claude Desktop for the changes to take 
 #### Testing the Integration
 
 You can test the integration by asking Claude:
-"Can you list our GitHub Enterprise license usage using the github-ent MCP tool?"
+"Can you show me a summary of our GitHub Enterprise license usage using the github-ent MCP tool?"
 
 ### SSE Configuration
 
@@ -407,11 +403,10 @@ For a complete EKS deployment guide, see the [wiki](https://github.com/vipink120
 ## 📊 Example Use Cases
 
 - **License Optimization**: Identify unused licenses to reduce costs
-- **Security Compliance**: Check which users have 2FA enabled
-- **Organization Auditing**: Review owner access across the enterprise
-- **User Management**: Find which organizations users belong to
+- **User Analysis**: Get detailed information about specific users
+- **Organization Membership**: Check which organizations a specific user belongs to
+- **Role Verification**: Verify if specific users have owner permissions
 - **License Planning**: Track license consumption for budget planning
-- **AI-powered GitHub Insights**: Let AI analyze your enterprise GitHub data
 
 ## 🔒 Security Considerations
 
