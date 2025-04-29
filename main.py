@@ -9,7 +9,7 @@ from typing import Dict, List, Optional, Any, AsyncIterator
 from contextlib import asynccontextmanager
 
 from mcp.server.fastmcp import FastMCP, Context
-from pydantic import BaseModel, Field, root_validator
+from pydantic import BaseModel, Field, root_validator, ConfigDict
 
 # ——— TROUBLESHOOTING: confirm this file loads ———
 logging.basicConfig(
@@ -175,8 +175,8 @@ class LicenseUserDetail(BaseModel):
         values["github_com_enterprise_roles"] = plural
         return values
 
-    class Config:
-        allow_population_by_field_name = True
+    # Allow population by field name (Pydantic V2 replacement for allow_population_by_field_name)
+    model_config = ConfigDict(populate_by_name=True)
 
 class LicenseSummary(BaseModel):
     total_seats_consumed: int
