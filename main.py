@@ -284,15 +284,8 @@ logger.info(f"FastMCP instance attributes ({len(attrs)}): {attrs}")
 # --- Main -------------------------------------------------------------
 
 async def main():
-    transport = os.getenv("TRANSPORT", "stdio").lower()
-    if transport == "sse":
-        import uvicorn
-        from starlette.applications import Starlette
-        from starlette.routing import Mount
-        app = Starlette(routes=[Mount("/", app=mcp.sse_app())])
-        uvicorn.run(app, host=os.getenv("HOST", "0.0.0.0"), port=int(os.getenv("PORT", 8050)))
-    else:
-        await mcp.run_stdio_async()
+    # Default to stdio transport for async MCP runtime
+    await mcp.run_stdio_async()
 
 if __name__ == "__main__":
     try:
@@ -302,4 +295,13 @@ if __name__ == "__main__":
         logger.warning("certifi not installed; SSL may not verify")
     if not os.getenv("GITHUB_TOKEN") or not os.getenv("GITHUB_ENTERPRISE_URL"):
         logger.error("Missing required env vars")
-    asyncio.run(main())
+    # Dispatch based on TRANSPORT: SSE uses Uvicorn HTTP server, stdio runs over stdio
+    transport = os.getenv("TRANSPORT", "stdio").lower()
+    if transport == "sse":
+        import uvicorn
+        from starlette.applications import Starlette
+        from starlette.routing import Mount
+        app = Starlette(routes=[Mount("/", app=mcp.sse_app())])
+        uvicorn.run(app, host=os.getenv("HOST", "0.0.0.0"), port=int(os.getenv("PORT", 8050)))
+    else:
+        asyncio.run(main())
